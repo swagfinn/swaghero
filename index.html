@@ -171,14 +171,22 @@ body{
   box-shadow:0 6px 18px rgba(211,12,123,.18);
 }
 .search-box{width:min(300px,100%);}
-.search-box input{
-  width:100%;height:42px;padding:0 14px;
+.search-box select{
+  width:100%;height:42px;padding:0 42px 0 14px;
   border:1px solid rgba(0,210,190,.15);border-radius:999px;
   background:rgba(0,210,190,.04);color:var(--text);outline:none;font-size:14px;
-  transition:.2s ease;
+  transition:.2s ease;appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #8dd6d0 50%),
+    linear-gradient(135deg, #8dd6d0 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 17px,
+    calc(100% - 14px) 17px;
+  background-size:6px 6px, 6px 6px;
+  background-repeat:no-repeat;
 }
-.search-box input::placeholder{color:#5a8e8a;}
-.search-box input:focus{border-color:rgba(0,210,190,.55);box-shadow:0 0 0 3px rgba(0,210,190,.12);}
+.search-box select:focus{border-color:rgba(0,210,190,.55);box-shadow:0 0 0 3px rgba(0,210,190,.12);}
+.search-box select option{background:#06101e;color:var(--text);}
 
 /* ─── Leaderboard ─── */
 .leader-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:20px;}
@@ -457,12 +465,14 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
     </div>
   </div>
 
-  <div class="toolbar" role="toolbar" aria-label="篩選與搜尋">
+  <div class="toolbar" role="toolbar" aria-label="篩選與排序">
     <div class="chips" id="deptChips" role="group" aria-label="部門篩選"></div>
     <div class="search-box">
-      <input id="searchInput" type="search" autocomplete="off"
-        placeholder="搜尋神隊友姓名或內容關鍵字"
-        aria-label="關鍵字搜尋"/>
+      <select id="sortSelect" aria-label="小卡排列順序">
+        <option value="latest">最新留言</option>
+        <option value="az">依照筆畫順序（A-Z）</option>
+        <option value="za">依照筆畫倒序（Z-A）</option>
+      </select>
     </div>
   </div>
 
@@ -551,7 +561,7 @@ const S = {
   likesMap:{},
   comments:{},
   dept:'全部',
-  kw:'',
+  sort:'latest',
   openCmt:{}
 };
 
@@ -561,7 +571,7 @@ const D = {
   wall:$('wall'),
   mq:$('marqueeTrack'),
   chips:$('deptChips'),
-  search:$('searchInput'),
+  sort:$('sortSelect'),
   statL:$('statLikes'),
   statW:$('statWeekNew'),
   statC:$('statWeekComments'),
@@ -608,10 +618,10 @@ function bind(){
   D.closeBtn.addEventListener('click', closeMod);
   D.backdrop.addEventListener('click', e=>{ if(e.target===D.backdrop) closeMod(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeMod(); });
-  D.search.addEventListener('input', debounce(e=>{
-    S.kw = (e.target.value||'').trim().toLowerCase();
+  D.sort.addEventListener('change', e=>{
+    S.sort = e.target.value || 'latest';
     renderAll();
-  },160));
+  });
   window.addEventListener('resize', debounce(makeRain, 220));
 
   document.addEventListener('visibilitychange', function(){
@@ -880,15 +890,16 @@ function renderChips(){
 
 function renderLeaders(){
   const tw = Date.now() - 14 * 24 * 3600 * 1000;
-  const lm = {}, tm = {};
+  const commentMap = {}, thanksMap = {};
 
   S.posts.filter(p=>p.createdAt>=tw).forEach(p=>{
-    lm[p.heroName] = (lm[p.heroName]||0) + (p.likes||0);
-    tm[p.heroName] = (tm[p.heroName]||0) + 1;
+    const cmtCount = (S.comments[p.id] || []).length;
+    commentMap[p.heroName] = (commentMap[p.heroName] || 0) + cmtCount;
+    thanksMap[p.heroName] = (thanksMap[p.heroName] || 0) + 1;
   });
 
-  const tl = topOf(lm);
-  const tt = topOf(tm);
+  const topCommenter = topOf(commentMap);
+  const topThanks    = topOf(thanksMap);
 
   function mkCard(entry,lbl,cls,icon){
     if(!entry){
@@ -905,8 +916,8 @@ function renderLeaders(){
   }
 
   D.leaders.innerHTML =
-    mkCard(tl,'兩週按讚王','lbl-pink','❤') +
-    mkCard(tt,'兩週感謝王','lbl-teal','✨') +
+    mkCard(topCommenter,'兩週留言王','lbl-pink','💬') +
+    mkCard(topThanks,'人氣感謝王','lbl-teal','✨') +
     `<div class="panel add-card add-leader-card" id="addBtn" role="button" tabindex="0" aria-label="點擊送出感謝">
       <div class="add-icon" aria-hidden="true">✨</div>
       <p>送出一則感謝</p>
@@ -993,11 +1004,23 @@ function renderWall(posts){
 
 /* ════════════ HELPERS ════════════ */
 function getFiltered(){
-  return S.posts.filter(p=>{
-    const dm = S.dept === '全部' || p.dept === S.dept;
-    const km = !S.kw || (p.heroName + ' ' + p.dept + ' ' + p.story).toLowerCase().includes(S.kw);
-    return dm && km;
-  }).sort((a,b)=>b.createdAt-a.createdAt);
+  const list = S.posts.filter(p => S.dept === '全部' || p.dept === S.dept);
+
+  if(S.sort === 'az'){
+    return list.sort((a,b)=> str(a.heroName).localeCompare(str(b.heroName), 'zh-Hant-u-co-stroke'));
+  }
+
+  if(S.sort === 'za'){
+    return list.sort((a,b)=> str(b.heroName).localeCompare(str(a.heroName), 'zh-Hant-u-co-stroke'));
+  }
+
+  return list.sort((a,b)=> getLatestActivity(b) - getLatestActivity(a));
+}
+
+function getLatestActivity(post){
+  const cmts = S.comments[post.id] || [];
+  const latestCommentAt = cmts.reduce((max, c)=>Math.max(max, Number(c.createdAt) || 0), 0);
+  return Math.max(Number(post.createdAt) || 0, latestCommentAt);
 }
 
 function merge(inc){
