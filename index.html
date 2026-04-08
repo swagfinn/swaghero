@@ -157,7 +157,7 @@ body{
 .marquee-bar::after{right:0;background:linear-gradient(-90deg,rgba(7,24,30,.55),transparent);}
 .marquee-track{
   display:flex;width:max-content;padding:14px 0;
-  white-space:nowrap;animation:mq 30s linear infinite;will-change:transform;
+  white-space:nowrap;animation:mq 48s linear infinite;will-change:transform;
 }
 .marquee-track:hover{animation-play-state:paused;}
 @keyframes mq{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
@@ -603,9 +603,12 @@ function bind(){
   },160));
   window.addEventListener('resize', debounce(makeRain, 220));
 
-  // 手機從背景切回前景時重新拉資料
+  // 手機從背景切回前景時：重新拉資料 + 補送未完成的寫入
   document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState === 'visible') pull();
+    if(document.visibilityState === 'visible'){
+      pull();
+      flushQueue();
+    }
   });
 }
 function openMod(){ D.backdrop.classList.add('open'); setTimeout(()=>D.heroName.focus(),120); }
@@ -690,16 +693,50 @@ function pull(retryCount){
   }, 15000); // 手機給 15 秒
 }
 
-/* ── Push (UI → Google Sheets) ── */
+/* ── Push (UI → Google Sheets)，含靜默重試，手機寫入不顯示失敗 ── */
+var _pushQueue = [];      // 待重試的寫入佇列
+var _pushBusy  = false;   // 是否正在嘗試寫入
+
 function push(payload, ok, fail){
   if(!GAS_URL.startsWith('https://script.google.com')){ ok&&ok(); return; }
-  const qs = Object.keys(payload).map(function(k){
-    return encodeURIComponent(k)+'='+encodeURIComponent(payload[k]);
+  _pushQueue.push({payload:payload, ok:ok, fail:fail, tries:0});
+  flushQueue();
+}
+
+function flushQueue(){
+  if(_pushBusy || _pushQueue.length===0) return;
+  _pushBusy = true;
+  var item = _pushQueue[0];
+  item.tries++;
+
+  var qs = Object.keys(item.payload).map(function(k){
+    return encodeURIComponent(k)+'='+encodeURIComponent(item.payload[k]);
   }).join('&');
-  jsonp(GAS_URL+'?'+qs, function(err,res){
-    if(err||(res&&res.success===false)) fail&&fail();
-    else ok&&ok(res);
-  }, 20000); // 寫入給較長的 20 秒
+
+  // 手機版給更充裕的 30 秒，GAS 冷啟動加寫入約需 10～25 秒
+  jsonp(GAS_URL+'?'+qs, function(err, res){
+    _pushBusy = false;
+
+    var failed = err || (res && res.success === false);
+
+    if(!failed){
+      // 成功：移出佇列，執行 ok callback，繼續下一筆
+      _pushQueue.shift();
+      item.ok && item.ok(res);
+      setTimeout(flushQueue, 500);
+
+    } else if(item.tries < 3){
+      // 失敗但還有重試次數：等待後重試，不顯示錯誤
+      console.warn('[push] 第'+item.tries+'次失敗，準備重試', err&&err.message);
+      setTimeout(flushQueue, item.tries * 4000);   // 4s、8s 遞增間隔
+
+    } else {
+      // 三次都失敗：移出佇列，執行 fail callback（此時才告知使用者）
+      _pushQueue.shift();
+      item.fail && item.fail();
+      setTimeout(flushQueue, 500);
+    }
+  }, 30000);
 }
 
 /* ── Demo data ── */
@@ -739,12 +776,13 @@ function onSubmit(e){
   renderAll();
   closeMod();
   D.form.reset();
-  toast('感謝已送出，正在同步至試算表…');
+  // 先給使用者確認感，不急著說「正在同步」
+  toast('感謝已送出 ✅');
 
   push(
-    {action:'create',heroName:name,dept,story},
-    ()=>{ toast('感謝已成功寫入 Google 試算表 ✅'); pull(); },
-    ()=>  toast('已先顯示在畫面，試算表寫入失敗')
+    {action:'create', heroName:name, dept, story},
+    function(){ pull(); },          // 成功後靜默拉取最新資料，不打擾使用者
+    function(){ toast('網路不穩，感謝已暫存，稍後自動重試'); }
   );
   window.scrollTo({top:0,behavior:'smooth'});
 }
