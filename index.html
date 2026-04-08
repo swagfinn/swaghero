@@ -720,8 +720,15 @@ function push(payload, ok, fail){
   }).join('&');
 
   jsonp(GAS_URL + '?' + qs, function(err, res){
-    if(err || (res && res.success === false)) fail && fail();
-    else ok && ok(res);
+    if(err){
+      fail && fail({ type:'network', message: err.message, raw:null });
+      return;
+    }
+    if(res && res.success === false){
+      fail && fail({ type:'server', message: res.message || 'server rejected', raw:res });
+      return;
+    }
+    ok && ok(res);
   }, 20000);
 }
 
@@ -757,16 +764,17 @@ function onSubmit(e){
   toast('感謝已送出，正在同步至試算表…');
 
   push(
-    {action:'create', heroName:name, dept, story},
-    function(){
-      toast('感謝已成功寫入 Google 試算表 ✅');
-      pull();
-    },
-    function(){
-      toast('已先顯示在畫面，試算表寫入失敗');
-    }
-  );
-
+  {action:'create', heroName:name, dept, story},
+  function(res){
+    toast('感謝已成功寫入 Google 試算表 ✅');
+    pull();
+  },
+  function(info){
+    console.error('push create failed:', info);
+    toast('試算表寫入失敗：' + (info?.message || 'unknown error'));
+  }
+);
+  
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
