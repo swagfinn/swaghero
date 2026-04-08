@@ -1004,9 +1004,9 @@ function merge(inc){
 function normalizeRow(row,i){
   if(!row) return null;
 
-  const heroName = str(row.heroName || row['神隊友（格式：ArthurWang）'] || row['神隊友'] || '');
-  const dept     = str(row.dept || row['部門'] || '');
-  const story    = str(row.story || row['他的超能力事蹟（當時發生了什麼？他做了什麼讓你難忘呢？）'] || row['他的超能力事蹟'] || '');
+  const heroName = str(row.heroName || row['heroName'] || '');
+  const dept     = str(row.dept || row['dept'] || '');
+  const story    = str(row.story || row['story'] || '');
 
   if(!heroName || !dept || !story) return null;
 
