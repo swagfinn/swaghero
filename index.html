@@ -13,14 +13,6 @@
 <title>神隊友感謝牆</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦸</text></svg>"/>
 <style>
-/* ══════════════════════════════════════════
-   色彩系統
-   主色   --brand  : #00D2BE  青綠
-   輔色1  --accent : #d30c7b  深粉紅
-   輔色2  --yellow : #fde74c  亮黃
-   輔色3  --cream  : #fbf5f3  米白
-   背景           : #06101e
-   ══════════════════════════════════════════ */
 :root{
   --bg-deep:#06101e;
   --bg-mid:#0a1628;
@@ -157,7 +149,7 @@ body{
 .marquee-bar::after{right:0;background:linear-gradient(-90deg,rgba(7,24,30,.55),transparent);}
 .marquee-track{
   display:flex;width:max-content;padding:14px 0;
-  white-space:nowrap;animation:mq 30s linear infinite;will-change:transform;
+  white-space:nowrap;animation:mq 48s linear infinite;will-change:transform;
 }
 .marquee-track:hover{animation-play-state:paused;}
 @keyframes mq{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
@@ -389,7 +381,7 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
   .leader-row .add-leader-card{grid-column:auto;}
   .form-2col{grid-template-columns:1fr;}
   .post-name-row{flex-direction:column;align-items:flex-start;}
-  .marquee-track{animation-duration:20s;}
+  .marquee-track{animation-duration:66s;}
 }
 @media(max-width:540px){
   .page{padding:16px 0 32px;}
@@ -408,9 +400,11 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
 
 <noscript>
   <style>
-    body{display:flex;align-items:center;justify-content:center;
-    min-height:100vh;text-align:center;padding:20px;
-    background:#06101e;color:#7ab8b2;font-family:sans-serif;}
+    body{
+      display:flex;align-items:center;justify-content:center;
+      min-height:100vh;text-align:center;padding:20px;
+      background:#06101e;color:#7ab8b2;font-family:sans-serif;
+    }
   </style>
   <p>神隊友感謝牆需要 JavaScript 才能運作，請開啟瀏覽器的 JavaScript 後重新整理。</p>
 </noscript>
@@ -419,14 +413,12 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
 
 <main class="page" role="main">
 
-  <!-- Hero -->
   <section class="hero">
     <div class="hero-badge">還好有你｜感謝被看見，合作更有力量 🦸</div>
     <h1><span class="gtext">神隊友感謝牆</span></h1>
     <p>寫下感謝的那位同事，也許是他在你快爆炸時接住了事情，也許是他默默把最難的部分做好。每一份支持，成就了現在的我們。<br>別讓那句「謝謝」過期，讓我們大聲告訴對方：「還好有你」。</p>
   </section>
 
-  <!-- 1.1 Stats + 1.2 Marquee -->
   <div class="panel" style="margin-top:0;" aria-label="統計數據">
     <div class="stats-row">
       <div class="stat-card">
@@ -465,7 +457,6 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
     </div>
   </div>
 
-  <!-- 1.3 Toolbar -->
   <div class="toolbar" role="toolbar" aria-label="篩選與搜尋">
     <div class="chips" id="deptChips" role="group" aria-label="部門篩選"></div>
     <div class="search-box">
@@ -475,17 +466,12 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
     </div>
   </div>
 
-  <!-- 1.4 Leaderboard -->
   <div class="leader-row" id="leaderRow" aria-label="感謝排行榜"></div>
-
-  <!-- 1.7 Wall -->
   <div class="wall" id="wall" aria-label="感謝牆"></div>
 
   <p class="footer">感謝資料儲存於 Google Sheets，按讚與留言即時同步。</p>
-
 </main>
 
-<!-- 1.5 Modal -->
 <div class="modal-backdrop" id="modalBackdrop"
      role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal">
@@ -561,25 +547,49 @@ const AV = ['av-gold','av-teal','av-pink','av-green','av-purple','av-orange'];
 
 /* ── State ── */
 const S = {
-  posts:[], likesMap:{}, comments:{},
-  dept:'全部', kw:'', openCmt:{}
+  posts:[],
+  likesMap:{},
+  comments:{},
+  dept:'全部',
+  kw:'',
+  openCmt:{}
 };
 
 /* ── DOM ── */
 const $ = id => document.getElementById(id);
 const D = {
-  wall:$('wall'), mq:$('marqueeTrack'), chips:$('deptChips'),
-  search:$('searchInput'), statL:$('statLikes'), statW:$('statWeekNew'),
-  statC:$('statWeekComments'), leaders:$('leaderRow'),
-  backdrop:$('modalBackdrop'), closeBtn:$('modalClose'),
-  form:$('thanksForm'), heroName:$('heroName'),
-  dept:$('dept'), story:$('story'),
-  toast:$('toast'), rain:$('logoRain')
+  wall:$('wall'),
+  mq:$('marqueeTrack'),
+  chips:$('deptChips'),
+  search:$('searchInput'),
+  statL:$('statLikes'),
+  statW:$('statWeekNew'),
+  statC:$('statWeekComments'),
+  leaders:$('leaderRow'),
+  backdrop:$('modalBackdrop'),
+  closeBtn:$('modalClose'),
+  form:$('thanksForm'),
+  heroName:$('heroName'),
+  dept:$('dept'),
+  story:$('story'),
+  toast:$('toast'),
+  rain:$('logoRain')
 };
 
 /* ── Storage ── */
-function lsGet(k,fb){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):fb; }catch(e){ return fb; } }
-function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function lsGet(k,fb){
+  try{
+    const v = localStorage.getItem(k);
+    return v ? JSON.parse(v) : fb;
+  }catch(e){
+    return fb;
+  }
+}
+function lsSet(k,v){
+  try{
+    localStorage.setItem(k, JSON.stringify(v));
+  }catch(e){}
+}
 
 /* ── Init ── */
 function init(){
@@ -599,24 +609,29 @@ function bind(){
   D.backdrop.addEventListener('click', e=>{ if(e.target===D.backdrop) closeMod(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeMod(); });
   D.search.addEventListener('input', debounce(e=>{
-    S.kw=(e.target.value||'').trim().toLowerCase(); renderAll();
+    S.kw = (e.target.value||'').trim().toLowerCase();
+    renderAll();
   },160));
   window.addEventListener('resize', debounce(makeRain, 220));
 
-  // 手機從背景切回前景時重新拉資料
   document.addEventListener('visibilitychange', function(){
     if(document.visibilityState === 'visible') pull();
   });
 }
-function openMod(){ D.backdrop.classList.add('open'); setTimeout(()=>D.heroName.focus(),120); }
-function closeMod(){ D.backdrop.classList.remove('open'); }
+function openMod(){
+  D.backdrop.classList.add('open');
+  setTimeout(()=>D.heroName.focus(),120);
+}
+function closeMod(){
+  D.backdrop.classList.remove('open');
+}
 
-/* ── JSONP（手機相容版：body 插入 + timeout 保護） ── */
+/* ── JSONP ── */
 function jsonp(url, cb, timeoutMs){
-  const ms   = timeoutMs || 12000;   // 手機網路預設 12 秒 timeout
-  const name = '_jcb'+Date.now()+Math.random().toString(36).slice(2,6);
+  const ms   = timeoutMs || 12000;
+  const name = '_jcb' + Date.now() + Math.random().toString(36).slice(2,6);
   const s    = document.createElement('script');
-  let   done = false;
+  let done = false;
 
   const cleanup = function(){
     done = true;
@@ -629,7 +644,6 @@ function jsonp(url, cb, timeoutMs){
     cb(err, res);
   };
 
-  // timeout：手機網路慢時避免永久卡住
   const timer = setTimeout(function(){
     finish(new Error('timeout'), null);
   }, ms);
@@ -643,236 +657,285 @@ function jsonp(url, cb, timeoutMs){
     finish(new Error('script error'), null);
   };
 
-  // 用 body 插入，iOS Safari 相容性比 head 好
-  s.src = url + (url.includes('?')?'&':'?') + 'callback='+name+'&_t='+Date.now();
+  s.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + name + '&_t=' + Date.now();
   (document.body || document.head).appendChild(s);
 }
 
-/* ── Pull (Google Sheets → UI)，含重試機制 ── */
+/* ── Pull (Google Sheets → UI) ── */
 function pull(retryCount){
-  if(!GAS_URL.startsWith('https://script.google.com')){ useDemo(); return; }
+  if(!GAS_URL.startsWith('https://script.google.com')) return;
+
   const retry = retryCount || 0;
 
-  jsonp(GAS_URL+'?action=list', function(err, res){
+  jsonp(GAS_URL + '?action=list', function(err, res){
     if(err){
-      console.warn('[pull] 第'+(retry+1)+'次失敗:', err.message);
+      console.warn('[pull] 第' + (retry + 1) + '次失敗:', err.message);
       if(retry < 2){
-        // 手機網路不穩：最多重試 2 次，間隔遞增
-        setTimeout(function(){ pull(retry+1); }, (retry+1)*3000);
-      } else {
-        if(!S.posts.length) useDemo();
+        setTimeout(function(){ pull(retry + 1); }, (retry + 1) * 3000);
+      }else{
         toast('網路連線不穩，顯示本機暫存資料');
       }
       return;
     }
-    const rows = res&&Array.isArray(res.data)?res.data:[];
+
+    const rows = res && Array.isArray(res.data) ? res.data : [];
     const norm = rows.map(normalizeRow).filter(Boolean);
+
     if(norm.length){
       merge(norm);
-      // 同步伺服器留言到本機
+
       norm.forEach(function(p){
-        if(p.comments&&p.comments.length){
-          const local = S.comments[p.id]||[];
-          // 以伺服器為主，補上本機新增但尚未同步的留言
-          const svCmts = p.comments.map(function(t){ return {text:t,createdAt:0}; });
+        if(p.comments && p.comments.length){
+          const local = S.comments[p.id] || [];
+          const svCmts = p.comments.map(function(t){
+            return { text:t, createdAt:0 };
+          });
           const localOnly = local.filter(function(lc){
             return !p.comments.includes(lc.text);
           });
           S.comments[p.id] = svCmts.concat(localOnly);
         }
       });
+
       lsSet(LS_POSTS, S.posts);
       lsSet(LS_COMMENTS, S.comments);
       renderAll();
-    } else if(!S.posts.length){
-      useDemo();
+    }else{
+      S.posts = [];
+      lsSet(LS_POSTS, S.posts);
+      renderAll();
     }
-  }, 15000); // 手機給 15 秒
+  }, 15000);
 }
 
 /* ── Push (UI → Google Sheets) ── */
 function push(payload, ok, fail){
-  if(!GAS_URL.startsWith('https://script.google.com')){ ok&&ok(); return; }
-  const qs = Object.keys(payload).map(function(k){
-    return encodeURIComponent(k)+'='+encodeURIComponent(payload[k]);
-  }).join('&');
-  jsonp(GAS_URL+'?'+qs, function(err,res){
-    if(err||(res&&res.success===false)) fail&&fail();
-    else ok&&ok(res);
-  }, 20000); // 寫入給較長的 20 秒
-}
+  if(!GAS_URL.startsWith('https://script.google.com')){
+    ok && ok();
+    return;
+  }
 
-/* ── Demo data ── */
-function useDemo(){
-  if(S.posts.length) return;
-  const now=Date.now();
-  S.posts=[
-    {id:uid(),heroName:'ArthurWang',dept:'User Operation (OPS)',
-     story:'昨天需求很急、資料又很亂時，他主動把資訊重新整理，還幫忙釐清優先順序，讓整件事可以在下班前順利收尾。',
-     createdAt:now-2*3600000,likes:18},
-    {id:uid(),heroName:'CindyLin',dept:'Design (設計)',
-     story:'協助我把混亂的視覺稿整理得非常清楚，還主動提供備用方案，讓發佈時間縮短了整整兩天。',
-     createdAt:now-10*3600000,likes:7},
-    {id:uid(),heroName:'BrianChen',dept:'Product (PM)',
-     story:'在最關鍵的時間點提出了一個讓大家都服氣的解法，把原本卡住兩週的需求討論直接收尾。',
-     createdAt:now-22*3600000,likes:12},
-  ];
-  lsSet(LS_POSTS,S.posts);
-  renderAll();
+  const qs = Object.keys(payload).map(function(k){
+    return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
+  }).join('&');
+
+  jsonp(GAS_URL + '?' + qs, function(err, res){
+    if(err || (res && res.success === false)) fail && fail();
+    else ok && ok(res);
+  }, 20000);
 }
 
 /* ── Submit ── */
 function onSubmit(e){
   e.preventDefault();
+
   const name  = (D.heroName.value||'').replace(/\s+/g,'').trim();
   const dept  = (D.dept.value||'').trim();
   const story = (D.story.value||'').trim();
+
   if(!name)  return toast('請填寫神隊友姓名');
   if(!dept)  return toast('請選擇部門');
   if(!story) return toast('請填寫超能力事蹟');
-  if(!/^[A-Za-z0-9_\u4e00-\u9fff]{2,40}$/.test(name))
+  if(!/^[A-Za-z0-9_\u4e00-\u9fff]{2,40}$/.test(name)){
     return toast('姓名格式建議為英數字，例如 ArthurWang');
+  }
 
-  const post={id:uid(),heroName:name,dept,story,createdAt:Date.now(),likes:0};
+  const post = {
+    id:uid(),
+    heroName:name,
+    dept,
+    story,
+    createdAt:Date.now(),
+    likes:0
+  };
+
   S.posts.unshift(post);
-  lsSet(LS_POSTS,S.posts);
+  lsSet(LS_POSTS, S.posts);
   renderAll();
   closeMod();
   D.form.reset();
   toast('感謝已送出，正在同步至試算表…');
 
   push(
-    {action:'create',heroName:name,dept,story},
-    ()=>{ toast('感謝已成功寫入 Google 試算表 ✅'); pull(); },
-    ()=>  toast('已先顯示在畫面，試算表寫入失敗')
+    {action:'create', heroName:name, dept, story},
+    function(){
+      toast('感謝已成功寫入 Google 試算表 ✅');
+      pull();
+    },
+    function(){
+      toast('已先顯示在畫面，試算表寫入失敗');
+    }
   );
-  window.scrollTo({top:0,behavior:'smooth'});
+
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 /* ── Like ── */
 function onLike(id){
-  const p=S.posts.find(p=>p.id===id); if(!p) return;
-  if(S.likesMap[id]){ p.likes=Math.max(0,(p.likes||0)-1); delete S.likesMap[id]; }
-  else              { p.likes=(p.likes||0)+1; S.likesMap[id]=true; }
-  lsSet(LS_POSTS,S.posts); lsSet(LS_LIKES,S.likesMap);
-  push({action:'like',id,likes:p.likes});
+  const p = S.posts.find(p=>p.id===id);
+  if(!p) return;
+
+  if(S.likesMap[id]){
+    p.likes = Math.max(0, (p.likes||0) - 1);
+    delete S.likesMap[id];
+  }else{
+    p.likes = (p.likes||0) + 1;
+    S.likesMap[id] = true;
+  }
+
+  lsSet(LS_POSTS, S.posts);
+  lsSet(LS_LIKES, S.likesMap);
+  push({action:'like', id, likes:p.likes});
   renderAll();
 }
 
 /* ── Comment ── */
 function toggleCmt(id){
-  S.openCmt[id]=!S.openCmt[id];
-  const w=document.getElementById('cw_'+id);
-  if(w) w.classList.toggle('open',!!S.openCmt[id]);
+  S.openCmt[id] = !S.openCmt[id];
+  const w = document.getElementById('cw_' + id);
+  if(w) w.classList.toggle('open', !!S.openCmt[id]);
 }
 function sendCmt(id){
-  const inp=document.getElementById('ci_'+id); if(!inp) return;
-  const text=(inp.value||'').trim();
+  const inp = document.getElementById('ci_' + id);
+  if(!inp) return;
+
+  const text = (inp.value||'').trim();
   if(!text) return toast('留言不可為空');
-  if(!S.comments[id]) S.comments[id]=[];
-  if(S.comments[id].length>=MAX_CMT)
+
+  if(!S.comments[id]) S.comments[id] = [];
+  if(S.comments[id].length >= MAX_CMT){
     return toast('留言已達上限，來增加新的感謝吧！');
-  S.comments[id].push({text,createdAt:Date.now()});
-  lsSet(LS_COMMENTS,S.comments);
-  inp.value='';
-  push({action:'comment',id,comment:text});
-  S.openCmt[id]=true;
+  }
+
+  S.comments[id].push({text, createdAt:Date.now()});
+  lsSet(LS_COMMENTS, S.comments);
+  inp.value = '';
+  push({action:'comment', id, comment:text});
+  S.openCmt[id] = true;
   renderAll();
 }
 
 /* ════════════ RENDER ════════════ */
 function renderAll(){
-  renderStats(); renderMarquee(); renderChips(); renderLeaders(); renderWall(getFiltered());
+  renderStats();
+  renderMarquee();
+  renderChips();
+  renderLeaders();
+  renderWall(getFiltered());
 }
 
 function renderStats(){
-  const now=Date.now(), ws=now-WEEK;
+  const now = Date.now();
+  const ws = now - WEEK;
+
   D.statL.textContent = fmt(S.posts.reduce((s,p)=>s+(p.likes||0),0));
-  D.statW.textContent = '+'+fmt(S.posts.filter(p=>p.createdAt>=ws).length);
-  D.statC.textContent = fmt(S.posts.reduce((s,p)=>
-    s+(S.comments[p.id]||[]).filter(c=>c.createdAt>=ws).length,0));
+  D.statW.textContent = '+' + fmt(S.posts.filter(p=>p.createdAt>=ws).length);
+  D.statC.textContent = fmt(
+    S.posts.reduce((s,p)=>
+      s + (S.comments[p.id]||[]).filter(c=>c.createdAt>=ws).length
+    ,0)
+  );
 }
 
 function renderMarquee(){
-  const now=Date.now();
-  const src=S.posts.filter(p=>now-p.createdAt<=HOUR72)
-    .sort((a,b)=>b.createdAt-a.createdAt).slice(0,12);
-  const list=src.length?src:[{heroName:'神隊友',story:'目前還沒有 72 小時內的新感謝，歡迎送出第一則！'}];
-  const html=list.map(p=>{
-    const prev=p.story.length>32?p.story.slice(0,32)+'…':p.story;
+  const now = Date.now();
+  const src = S.posts
+    .filter(p=>now-p.createdAt<=HOUR72)
+    .sort((a,b)=>b.createdAt-a.createdAt)
+    .slice(0,12);
+
+  const list = src.length ? src : [{
+    heroName:'神隊友',
+    story:'目前還沒有 72 小時內的新感謝，歡迎送出第一則！'
+  }];
+
+  const html = list.map(p=>{
+    const prev = p.story.length>32 ? p.story.slice(0,32)+'…' : p.story;
     return `<span class="mq-item"><span class="mq-heart" aria-hidden="true">❤</span>感謝 <strong>${esc(p.heroName)}</strong> 的超能力事蹟：${esc(prev)}<span class="mq-sep">·</span></span>`;
   }).join('');
-  D.mq.innerHTML=html+html;
+
+  D.mq.innerHTML = html + html;
 }
 
 function renderChips(){
-  D.chips.innerHTML=DEPTS.map(d=>
+  D.chips.innerHTML = DEPTS.map(d =>
     `<button type="button" class="chip${S.dept===d?' active':''}" data-d="${esc(d)}">${esc(d)}</button>`
   ).join('');
-  D.chips.querySelectorAll('.chip').forEach(b=>
-    b.addEventListener('click',()=>{ S.dept=b.dataset.d||'全部'; renderAll(); })
+
+  D.chips.querySelectorAll('.chip').forEach(b =>
+    b.addEventListener('click', ()=>{
+      S.dept = b.dataset.d || '全部';
+      renderAll();
+    })
   );
 }
 
 function renderLeaders(){
-  const tw=Date.now()-14*24*3600*1000;
-  const lm={},tm={};
+  const tw = Date.now() - 14 * 24 * 3600 * 1000;
+  const lm = {}, tm = {};
+
   S.posts.filter(p=>p.createdAt>=tw).forEach(p=>{
-    lm[p.heroName]=(lm[p.heroName]||0)+(p.likes||0);
-    tm[p.heroName]=(tm[p.heroName]||0)+1;
+    lm[p.heroName] = (lm[p.heroName]||0) + (p.likes||0);
+    tm[p.heroName] = (tm[p.heroName]||0) + 1;
   });
-  const tl=topOf(lm), tt=topOf(tm);
+
+  const tl = topOf(lm);
+  const tt = topOf(tm);
 
   function mkCard(entry,lbl,cls,icon){
-    if(!entry) return `<div class="panel leader-card"><div class="leader-lbl ${cls}"><span class="ldot"></span>${lbl}</div><p style="color:var(--muted);font-size:13px;margin-top:10px;">暫無資料</p></div>`;
+    if(!entry){
+      return `<div class="panel leader-card"><div class="leader-lbl ${cls}"><span class="ldot"></span>${lbl}</div><p style="color:var(--muted);font-size:13px;margin-top:10px;">暫無資料</p></div>`;
+    }
     return `<div class="panel leader-card">
       <div class="leader-lbl ${cls}"><span class="ldot"></span>${lbl}</div>
       <div class="leader-main">
         <div class="avatar ${getAv(entry.name)}" aria-hidden="true">${initial(entry.name)}</div>
         <div class="leader-info"><h3>${esc(entry.name)}</h3><p>${esc(getDept(entry.name))}</p></div>
         <div class="leader-score">${icon} ${fmt(entry.val)}</div>
-      </div></div>`;
+      </div>
+    </div>`;
   }
 
   D.leaders.innerHTML =
     mkCard(tl,'兩週按讚王','lbl-pink','❤') +
     mkCard(tt,'兩週感謝王','lbl-teal','✨') +
-    `<div class="panel add-card add-leader-card" id="addBtn"
-          role="button" tabindex="0" aria-label="點擊送出感謝">
-       <div class="add-icon" aria-hidden="true">✨</div>
-       <p>送出一則感謝</p><span>點擊填寫表單</span>
-     </div>`;
+    `<div class="panel add-card add-leader-card" id="addBtn" role="button" tabindex="0" aria-label="點擊送出感謝">
+      <div class="add-icon" aria-hidden="true">✨</div>
+      <p>送出一則感謝</p>
+      <span>點擊填寫表單</span>
+    </div>`;
 
-  const btn=$('addBtn');
+  const btn = $('addBtn');
   if(btn){
     btn.addEventListener('click', openMod);
-    btn.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' ') openMod(); });
+    btn.addEventListener('keydown', e=>{
+      if(e.key==='Enter' || e.key===' ') openMod();
+    });
   }
 }
 
 function renderWall(posts){
   if(!posts.length){
-    D.wall.innerHTML='<div class="empty">目前沒有符合條件的感謝，試試切換部門或搜尋其他關鍵字。</div>';
+    D.wall.innerHTML = '<div class="empty">目前沒有符合條件的感謝，試試切換部門或搜尋其他關鍵字。</div>';
     return;
   }
-  D.wall.innerHTML=posts.map((p,i)=>{
-    const liked  = !!S.likesMap[p.id];
-    const cmts   = S.comments[p.id]||[];
-    const isOpen = !!S.openCmt[p.id];
-    const full   = cmts.length>=MAX_CMT;
 
-    const cmtList = cmts.map(c=>
+  D.wall.innerHTML = posts.map((p,i)=>{
+    const liked  = !!S.likesMap[p.id];
+    const cmts   = S.comments[p.id] || [];
+    const isOpen = !!S.openCmt[p.id];
+    const full   = cmts.length >= MAX_CMT;
+
+    const cmtList = cmts.map(c =>
       `<div class="comment-item"><div>${esc(c.text)}</div><div class="c-time">${relTime(c.createdAt)}</div></div>`
     ).join('');
 
     const cmtForm = full
       ? `<div class="comment-limit">留言已達上限 ${MAX_CMT}/${MAX_CMT}，來增加新的感謝吧！</div>`
       : `<div class="comment-form">
-           <textarea class="comment-input" id="ci_${p.id}"
-             placeholder="輸入留言… (Enter 送出)" rows="1" maxlength="200"
-             aria-label="輸入留言"></textarea>
-           <button class="comment-send" data-cs="${p.id}" aria-label="送出留言">送出</button>
-         </div>`;
+          <textarea class="comment-input" id="ci_${p.id}" placeholder="輸入留言… (Enter 送出)" rows="1" maxlength="200" aria-label="輸入留言"></textarea>
+          <button class="comment-send" data-cs="${p.id}" aria-label="送出留言">送出</button>
+        </div>`;
 
     return `<article class="panel post-card">
       <div class="post-top">
@@ -887,8 +950,7 @@ function renderWall(posts){
       </div>
       <div class="post-body">${esc(p.story)}</div>
       <div class="post-foot">
-        <button class="act-btn${liked?' liked':''}" data-lk="${p.id}"
-          aria-label="${liked?'取消按讚':'按讚'}">
+        <button class="act-btn${liked?' liked':''}" data-lk="${p.id}" aria-label="${liked?'取消按讚':'按讚'}">
           ${liked?'❤':'♡'} ${fmt(p.likes||0)}
         </button>
         <button class="act-btn" data-ct="${p.id}" aria-expanded="${isOpen}">
@@ -902,12 +964,21 @@ function renderWall(posts){
     </article>`;
   }).join('');
 
-  D.wall.querySelectorAll('[data-lk]').forEach(b=>b.addEventListener('click',()=>onLike(b.dataset.lk)));
-  D.wall.querySelectorAll('[data-ct]').forEach(b=>b.addEventListener('click',()=>toggleCmt(b.dataset.ct)));
-  D.wall.querySelectorAll('[data-cs]').forEach(b=>b.addEventListener('click',()=>sendCmt(b.dataset.cs)));
+  D.wall.querySelectorAll('[data-lk]').forEach(b =>
+    b.addEventListener('click', ()=>onLike(b.dataset.lk))
+  );
+  D.wall.querySelectorAll('[data-ct]').forEach(b =>
+    b.addEventListener('click', ()=>toggleCmt(b.dataset.ct))
+  );
+  D.wall.querySelectorAll('[data-cs]').forEach(b =>
+    b.addEventListener('click', ()=>sendCmt(b.dataset.cs))
+  );
   D.wall.querySelectorAll('.comment-input').forEach(inp=>{
-    inp.addEventListener('keydown',e=>{
-      if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendCmt(inp.id.replace('ci_','')); }
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Enter' && !e.shiftKey){
+        e.preventDefault();
+        sendCmt(inp.id.replace('ci_',''));
+      }
     });
   });
 }
@@ -915,65 +986,116 @@ function renderWall(posts){
 /* ════════════ HELPERS ════════════ */
 function getFiltered(){
   return S.posts.filter(p=>{
-    const dm=S.dept==='全部'||p.dept===S.dept;
-    const km=!S.kw||(p.heroName+' '+p.dept+' '+p.story).toLowerCase().includes(S.kw);
-    return dm&&km;
+    const dm = S.dept === '全部' || p.dept === S.dept;
+    const km = !S.kw || (p.heroName + ' ' + p.dept + ' ' + p.story).toLowerCase().includes(S.kw);
+    return dm && km;
   }).sort((a,b)=>b.createdAt-a.createdAt);
 }
+
 function merge(inc){
-  const lk={};
-  S.posts.forEach(p=>{ lk[sig(p)]=p.likes||0; });
-  S.posts=inc.map(p=>({...p,likes:Number(p.likes||lk[sig(p)]||0)}))
-    .sort((a,b)=>b.createdAt-a.createdAt);
+  const lk = {};
+  S.posts.forEach(p=>{ lk[sig(p)] = p.likes||0; });
+  S.posts = inc.map(p=>({
+    ...p,
+    likes:Number(p.likes || lk[sig(p)] || 0)
+  })).sort((a,b)=>b.createdAt-a.createdAt);
 }
+
 function normalizeRow(row,i){
   if(!row) return null;
-  const heroName=str(row.heroName||row['神隊友（格式：ArthurWang）']||row['神隊友']||'');
-  const dept    =str(row.dept||row['部門']||'');
-  const story   =str(row.story||row['他的超能力事蹟（當時發生了什麼？他做了什麼讓你難忘呢？）']||row['他的超能力事蹟']||'');
-  if(!heroName||!dept||!story) return null;
-  let ca=Date.parse(row.createdAt||row.time||'');
-  if(isNaN(ca)) ca=Date.now()-i*60000;
-  return {id:str(row.id||uid()),heroName,dept,story,createdAt:ca,likes:Number(row.likes||0)};
-}
-function validPost(p){ return p&&typeof p.heroName==='string'&&typeof p.dept==='string'&&typeof p.story==='string'&&typeof p.createdAt==='number'; }
-function sig(p){ return p.heroName+'||'+p.dept+'||'+p.story; }
-function topOf(map){ const ks=Object.keys(map); if(!ks.length) return null; let t=ks[0]; ks.forEach(k=>{ if(map[k]>map[t]) t=k; }); return {name:t,val:map[t]}; }
-function getDept(name){ const p=S.posts.find(p=>p.heroName===name); return p?p.dept:''; }
-function getAv(name){ let h=0; for(let i=0;i<name.length;i++) h=(h+name.charCodeAt(i))%AV.length; return AV[h]; }
-function initial(n){ return String(n||'').slice(0,1).toUpperCase()||'神'; }
-function fmt(n){ return new Intl.NumberFormat('zh-TW').format(Number(n)||0); }
-function uid(){ return 'u'+Math.random().toString(36).slice(2,8)+Date.now().toString(36); }
-function str(v){ return String(v||'').trim(); }
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function relTime(ts){
-  const d=Date.now()-ts;
-  if(d<60000)    return '剛剛';
-  if(d<3600000)  return Math.floor(d/60000)+'分鐘前';
-  if(d<86400000) return Math.floor(d/3600000)+'小時前';
-  if(d<604800000)return Math.floor(d/86400000)+'天前';
-  const dt=new Date(ts);
-  return dt.getFullYear()+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+String(dt.getDate()).padStart(2,'0');
-}
-function debounce(fn,ms){ let t; return function(){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,arguments),ms); }; }
 
-let _tt=null;
+  const heroName = str(row.heroName || row['神隊友（格式：ArthurWang）'] || row['神隊友'] || '');
+  const dept     = str(row.dept || row['部門'] || '');
+  const story    = str(row.story || row['他的超能力事蹟（當時發生了什麼？他做了什麼讓你難忘呢？）'] || row['他的超能力事蹟'] || '');
+
+  if(!heroName || !dept || !story) return null;
+
+  let ca = Date.parse(row.createdAt || row.time || '');
+  if(isNaN(ca)) ca = Date.now() - i * 60000;
+
+  return {
+    id:str(row.id || uid()),
+    heroName,
+    dept,
+    story,
+    createdAt:ca,
+    likes:Number(row.likes || 0),
+    comments:Array.isArray(row.comments) ? row.comments : []
+  };
+}
+
+function validPost(p){
+  return p &&
+    typeof p.heroName === 'string' &&
+    typeof p.dept === 'string' &&
+    typeof p.story === 'string' &&
+    typeof p.createdAt === 'number';
+}
+
+function sig(p){ return p.heroName + '||' + p.dept + '||' + p.story; }
+function topOf(map){
+  const ks = Object.keys(map);
+  if(!ks.length) return null;
+  let t = ks[0];
+  ks.forEach(k=>{ if(map[k] > map[t]) t = k; });
+  return {name:t, val:map[t]};
+}
+function getDept(name){
+  const p = S.posts.find(p=>p.heroName===name);
+  return p ? p.dept : '';
+}
+function getAv(name){
+  let h = 0;
+  for(let i=0;i<name.length;i++) h = (h + name.charCodeAt(i)) % AV.length;
+  return AV[h];
+}
+function initial(n){ return String(n||'').slice(0,1).toUpperCase() || '神'; }
+function fmt(n){ return new Intl.NumberFormat('zh-TW').format(Number(n)||0); }
+function uid(){ return 'u' + Math.random().toString(36).slice(2,8) + Date.now().toString(36); }
+function str(v){ return String(v||'').trim(); }
+function esc(s){
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+function relTime(ts){
+  if(!ts) return '剛剛';
+  const d = Date.now() - ts;
+  if(d < 60000) return '剛剛';
+  if(d < 3600000) return Math.floor(d/60000) + '分鐘前';
+  if(d < 86400000) return Math.floor(d/3600000) + '小時前';
+  if(d < 604800000) return Math.floor(d/86400000) + '天前';
+  const dt = new Date(ts);
+  return dt.getFullYear() + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + String(dt.getDate()).padStart(2,'0');
+}
+function debounce(fn,ms){
+  let t;
+  return function(){
+    clearTimeout(t);
+    t = setTimeout(()=>fn.apply(this,arguments),ms);
+  };
+}
+
+let _tt = null;
 function toast(msg){
-  D.toast.textContent=msg;
+  D.toast.textContent = msg;
   D.toast.classList.add('show');
   clearTimeout(_tt);
-  _tt=setTimeout(()=>D.toast.classList.remove('show'),2600);
+  _tt = setTimeout(()=>D.toast.classList.remove('show'),2600);
 }
 
 /* ── Logo Rain ── */
 function makeRain(){
-  D.rain.innerHTML='';
-  const n=window.innerWidth<768?10:22;
+  D.rain.innerHTML = '';
+  const n = window.innerWidth < 768 ? 10 : 22;
   for(let i=0;i<n;i++){
-    const s=document.createElement('span');
-    s.className='logo-drop';
-    const sz=rnd(65,180);
-    s.style.cssText=`left:${rnd(0,100)}%;--sz:${sz}px;--dur:${rnd(14,28)}s;--del:${-rnd(0,26)}s;--op:${(Math.random()*.16+.12).toFixed(3)};--rot:${rnd(-14,12)}deg;--dx:${rnd(-80,100)}px;`;
+    const s = document.createElement('span');
+    s.className = 'logo-drop';
+    const sz = rnd(65,180);
+    s.style.cssText = `left:${rnd(0,100)}%;--sz:${sz}px;--dur:${rnd(14,28)}s;--del:${-rnd(0,26)}s;--op:${(Math.random()*.16+.12).toFixed(3)};--rot:${rnd(-14,12)}deg;--dx:${rnd(-80,100)}px;`;
     D.rain.appendChild(s);
   }
 }
