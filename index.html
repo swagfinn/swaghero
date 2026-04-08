@@ -499,16 +499,16 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
           <label for="dept">部門</label>
           <select id="dept" required>
             <option value="">請選擇部門</option>
-            <option>Research &amp; Development (RD)</option>
-            <option>Marketing (市場)</option>
-            <option>Executive Office (行政單位)</option>
-            <option>Creator (TM)</option>
-            <option>Customer Service (VIP)</option>
-            <option>Product (PM)</option>
-            <option>Design (設計)</option>
-            <option>User Operation (OPS)</option>
-            <option>Executive Office (行政單位,含HR)</option>
-            <option>Finance (財務)</option>
+            <option>Research &amp; Development（RD）</option>
+            <option>Marketing（市場）</option>
+            <option>Executive Office（行政單位）</option>
+            <option>Creator（TM）</option>
+            <option>Customer Service（VIP）</option>
+            <option>Product（PM）</option>
+            <option>Design（設計）</option>
+            <option>User Operation（OPS）</option>
+            <option>Executive Office（行政單位,含HR）</option>
+            <option>Finance（財務）</option>
           </select>
         </div>
       </div>
@@ -542,16 +542,16 @@ const WEEK         = 7  * 24 * 3600 * 1000;
 
 const DEPTS = [
   '全部',
-  'Research & Development (RD)',
-  'Marketing (市場)',
-  'Executive Office (行政單位)',
-  'Creator (TM)',
-  'Customer Service (VIP)',
-  'Product (PM)',
-  'Design (設計)',
-  'User Operation (OPS)',
-  'Executive Office (行政單位,含HR)',
-  'Finance (財務)'
+  'Research & Development（RD）',
+  'Marketing（市場）',
+  'Executive Office（行政單位）',
+  'Creator（TM）',
+  'Customer Service（VIP）',
+  'Product（PM）',
+  'Design（設計）',
+  'User Operation（OPS）',
+  'Executive Office（行政單位,含HR）',
+  'Finance（財務）'
 ];
 const AV = ['av-gold','av-teal','av-pink','av-green','av-purple','av-orange'];
 
@@ -747,7 +747,7 @@ function onSubmit(e){
   e.preventDefault();
 
   const name  = (D.heroName.value||'').replace(/\s+/g,'').trim();
-  const dept  = (D.dept.value||'').trim();
+  const dept  = canonDept((D.dept.value||'').trim());
   const story = (D.story.value||'').trim();
 
   if(!name)  return toast('請填寫神隊友姓名');
@@ -916,7 +916,7 @@ function renderLeaders(){
   }
 
   D.leaders.innerHTML =
-    mkCard(topCommenter,'最佳互動王','lbl-pink','💬') +
+    mkCard(topCommenter,'兩週留言王','lbl-pink','💬') +
     mkCard(topThanks,'人氣感謝王','lbl-teal','✨') +
     `<div class="panel add-card add-leader-card" id="addBtn" role="button" tabindex="0" aria-label="點擊送出感謝">
       <div class="add-icon" aria-hidden="true">✨</div>
@@ -1004,7 +1004,10 @@ function renderWall(posts){
 
 /* ════════════ HELPERS ════════════ */
 function getFiltered(){
-  const list = S.posts.filter(p => S.dept === '全部' || p.dept === S.dept);
+  const activeDept = canonDept(S.dept);
+  const list = S.posts.filter(function(p){
+    return activeDept === '全部' || canonDept(p.dept) === activeDept;
+  });
 
   if(S.sort === 'az'){
     return list.sort((a,b)=> str(a.heroName).localeCompare(str(b.heroName), 'zh-Hant-u-co-stroke'));
@@ -1036,7 +1039,7 @@ function normalizeRow(row,i){
   if(!row) return null;
 
   const heroName = str(row.heroName || row['heroName'] || '');
-  const dept     = str(row.dept || row['dept'] || '');
+  const dept     = canonDept(row.dept || row['dept'] || '');
   const story    = str(row.story || row['story'] || '');
 
   if(!heroName || !dept || !story) return null;
@@ -1084,6 +1087,42 @@ function initial(n){ return String(n||'').slice(0,1).toUpperCase() || '神'; }
 function fmt(n){ return new Intl.NumberFormat('zh-TW').format(Number(n)||0); }
 function uid(){ return 'u' + Math.random().toString(36).slice(2,8) + Date.now().toString(36); }
 function str(v){ return String(v||'').trim(); }
+function canonDept(v){
+  const raw = String(v || '').trim();
+  if(!raw) return '';
+  const cleaned = raw
+    .replace(/[（(]\s*/g,'（')
+    .replace(/\s*[）)]/g,'）')
+    .replace(/\s+/g,' ')
+    .replace(/&/g,'&');
+
+  const aliasMap = {
+    'Research & Development(RD)':'Research & Development（RD）',
+    'Research & Development（RD）':'Research & Development（RD）',
+    'Marketing(市場)':'Marketing（市場）',
+    'Marketing（市場）':'Marketing（市場）',
+    'Executive Office(行政單位)':'Executive Office（行政單位）',
+    'Executive Office（行政單位）':'Executive Office（行政單位）',
+    'Creator(TM)':'Creator（TM）',
+    'Creator（TM）':'Creator（TM）',
+    'Customer Service(VIP)':'Customer Service（VIP）',
+    'Customer Service（VIP）':'Customer Service（VIP）',
+    'Product(PM)':'Product（PM）',
+    'Product（PM）':'Product（PM）',
+    'Design(設計)':'Design（設計）',
+    'Design（設計）':'Design（設計）',
+    'User Operation(OPS)':'User Operation（OPS）',
+    'User Operation（OPS）':'User Operation（OPS）',
+    'Executive Office(行政單位,含HR)':'Executive Office（行政單位,含HR）',
+    'Executive Office（行政單位,含HR）':'Executive Office（行政單位,含HR）',
+    'Finance(財務)':'Finance（財務）',
+    'Finance（財務）':'Finance（財務）',
+    '全部':'全部'
+  };
+
+  const compact = cleaned.replace(/\s+/g,'');
+  return aliasMap[compact] || aliasMap[cleaned] || cleaned;
+}
 function esc(s){
   return String(s)
     .replace(/&/g,'&amp;')
