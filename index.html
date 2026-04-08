@@ -157,7 +157,7 @@ body{
 .marquee-bar::after{right:0;background:linear-gradient(-90deg,rgba(7,24,30,.55),transparent);}
 .marquee-track{
   display:flex;width:max-content;padding:14px 0;
-  white-space:nowrap;animation:mq 48s linear infinite;will-change:transform;
+  white-space:nowrap;animation:mq 30s linear infinite;will-change:transform;
 }
 .marquee-track:hover{animation-play-state:paused;}
 @keyframes mq{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
@@ -602,41 +602,104 @@ function bind(){
     S.kw=(e.target.value||'').trim().toLowerCase(); renderAll();
   },160));
   window.addEventListener('resize', debounce(makeRain, 220));
+
+  // 手機從背景切回前景時重新拉資料
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible') pull();
+  });
 }
 function openMod(){ D.backdrop.classList.add('open'); setTimeout(()=>D.heroName.focus(),120); }
 function closeMod(){ D.backdrop.classList.remove('open'); }
 
-/* ── JSONP ── */
-function jsonp(url, cb){
-  const name = '_jcb'+Date.now()+Math.random().toString(36).slice(2,5);
-  const s = document.createElement('script');
-  const cleanup = ()=>{ delete window[name]; try{document.head.removeChild(s);}catch(e){} };
-  window[name] = r=>{ cleanup(); cb(null,r); };
-  s.onerror    = ()=>{ cleanup(); cb(new Error('net')); };
+/* ── JSONP（手機相容版：body 插入 + timeout 保護） ── */
+function jsonp(url, cb, timeoutMs){
+  const ms   = timeoutMs || 12000;   // 手機網路預設 12 秒 timeout
+  const name = '_jcb'+Date.now()+Math.random().toString(36).slice(2,6);
+  const s    = document.createElement('script');
+  let   done = false;
+
+  const cleanup = function(){
+    done = true;
+    delete window[name];
+    if(s.parentNode) s.parentNode.removeChild(s);
+  };
+  const finish = function(err, res){
+    if(done) return;
+    cleanup();
+    cb(err, res);
+  };
+
+  // timeout：手機網路慢時避免永久卡住
+  const timer = setTimeout(function(){
+    finish(new Error('timeout'), null);
+  }, ms);
+
+  window[name] = function(r){
+    clearTimeout(timer);
+    finish(null, r);
+  };
+  s.onerror = function(){
+    clearTimeout(timer);
+    finish(new Error('script error'), null);
+  };
+
+  // 用 body 插入，iOS Safari 相容性比 head 好
   s.src = url + (url.includes('?')?'&':'?') + 'callback='+name+'&_t='+Date.now();
-  document.head.appendChild(s);
+  (document.body || document.head).appendChild(s);
 }
 
-/* ── Pull (Google Sheets → UI) ── */
-function pull(){
+/* ── Pull (Google Sheets → UI)，含重試機制 ── */
+function pull(retryCount){
   if(!GAS_URL.startsWith('https://script.google.com')){ useDemo(); return; }
-  jsonp(GAS_URL+'?action=list',(err,res)=>{
-    if(err){ if(!S.posts.length) useDemo(); return; }
+  const retry = retryCount || 0;
+
+  jsonp(GAS_URL+'?action=list', function(err, res){
+    if(err){
+      console.warn('[pull] 第'+(retry+1)+'次失敗:', err.message);
+      if(retry < 2){
+        // 手機網路不穩：最多重試 2 次，間隔遞增
+        setTimeout(function(){ pull(retry+1); }, (retry+1)*3000);
+      } else {
+        if(!S.posts.length) useDemo();
+        toast('網路連線不穩，顯示本機暫存資料');
+      }
+      return;
+    }
     const rows = res&&Array.isArray(res.data)?res.data:[];
     const norm = rows.map(normalizeRow).filter(Boolean);
-    if(norm.length){ merge(norm); lsSet(LS_POSTS,S.posts); renderAll(); }
-    else if(!S.posts.length){ useDemo(); }
-  });
+    if(norm.length){
+      merge(norm);
+      // 同步伺服器留言到本機
+      norm.forEach(function(p){
+        if(p.comments&&p.comments.length){
+          const local = S.comments[p.id]||[];
+          // 以伺服器為主，補上本機新增但尚未同步的留言
+          const svCmts = p.comments.map(function(t){ return {text:t,createdAt:0}; });
+          const localOnly = local.filter(function(lc){
+            return !p.comments.includes(lc.text);
+          });
+          S.comments[p.id] = svCmts.concat(localOnly);
+        }
+      });
+      lsSet(LS_POSTS, S.posts);
+      lsSet(LS_COMMENTS, S.comments);
+      renderAll();
+    } else if(!S.posts.length){
+      useDemo();
+    }
+  }, 15000); // 手機給 15 秒
 }
 
 /* ── Push (UI → Google Sheets) ── */
 function push(payload, ok, fail){
   if(!GAS_URL.startsWith('https://script.google.com')){ ok&&ok(); return; }
-  const qs = Object.keys(payload).map(k=>encodeURIComponent(k)+'='+encodeURIComponent(payload[k])).join('&');
-  jsonp(GAS_URL+'?'+qs,(err,res)=>{
+  const qs = Object.keys(payload).map(function(k){
+    return encodeURIComponent(k)+'='+encodeURIComponent(payload[k]);
+  }).join('&');
+  jsonp(GAS_URL+'?'+qs, function(err,res){
     if(err||(res&&res.success===false)) fail&&fail();
     else ok&&ok(res);
-  });
+  }, 20000); // 寫入給較長的 20 秒
 }
 
 /* ── Demo data ── */
