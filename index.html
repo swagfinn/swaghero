@@ -157,7 +157,7 @@ body{
 .marquee-bar::after{right:0;background:linear-gradient(-90deg,rgba(7,24,30,.55),transparent);}
 .marquee-track{
   display:flex;width:max-content;padding:14px 0;
-  white-space:nowrap;animation:mq 48s linear infinite;will-change:transform;
+  white-space:nowrap;animation:mq 30s linear infinite;will-change:transform;
 }
 .marquee-track:hover{animation-play-state:paused;}
 @keyframes mq{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
@@ -389,7 +389,7 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
   .leader-row .add-leader-card{grid-column:auto;}
   .form-2col{grid-template-columns:1fr;}
   .post-name-row{flex-direction:column;align-items:flex-start;}
-  .marquee-track{animation-duration:60s;}
+  .marquee-track{animation-duration:20s;}
 }
 @media(max-width:540px){
   .page{padding:16px 0 32px;}
@@ -583,13 +583,9 @@ function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){}
 
 /* ── Init ── */
 function init(){
-  // 清除本機暫存，統一以 Google Sheets 為唯一資料來源
-  lsSet(LS_POSTS, []);
-  lsSet(LS_LIKES, {});
-  lsSet(LS_COMMENTS, {});
-  S.posts    = [];
-  S.likesMap = {};
-  S.comments = {};
+  S.posts    = lsGet(LS_POSTS,[]).filter(validPost);
+  S.likesMap = lsGet(LS_LIKES,{});
+  S.comments = lsGet(LS_COMMENTS,{});
   makeRain();
   bind();
   renderAll();
@@ -607,36 +603,34 @@ function bind(){
   },160));
   window.addEventListener('resize', debounce(makeRain, 220));
 
-  // 手機從背景切回前景時：重新拉資料 + 補送未完成的寫入
+  // 手機從背景切回前景時重新拉資料
   document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState === 'visible'){
-      pull();
-      flushQueue();
-    }
+    if(document.visibilityState === 'visible') pull();
   });
 }
 function openMod(){ D.backdrop.classList.add('open'); setTimeout(()=>D.heroName.focus(),120); }
 function closeMod(){ D.backdrop.classList.remove('open'); }
 
-/* ── JSONP（iOS Safari 完整相容版） ── */
+/* ── JSONP（手機相容版：body 插入 + timeout 保護） ── */
 function jsonp(url, cb, timeoutMs){
-  var ms   = timeoutMs || 18000;
-  var name = '_jcb' + Date.now() + Math.random().toString(36).slice(2,7);
-  var s    = document.createElement('script');
-  var done = false;
+  const ms   = timeoutMs || 12000;   // 手機網路預設 12 秒 timeout
+  const name = '_jcb'+Date.now()+Math.random().toString(36).slice(2,6);
+  const s    = document.createElement('script');
+  let   done = false;
 
-  var cleanup = function(){
+  const cleanup = function(){
     done = true;
     delete window[name];
-    try{ if(s.parentNode) s.parentNode.removeChild(s); }catch(e){}
+    if(s.parentNode) s.parentNode.removeChild(s);
   };
-  var finish = function(err, res){
+  const finish = function(err, res){
     if(done) return;
     cleanup();
     cb(err, res);
   };
 
-  var timer = setTimeout(function(){
+  // timeout：手機網路慢時避免永久卡住
+  const timer = setTimeout(function(){
     finish(new Error('timeout'), null);
   }, ms);
 
@@ -646,185 +640,84 @@ function jsonp(url, cb, timeoutMs){
   };
   s.onerror = function(){
     clearTimeout(timer);
-    finish(new Error('script_error'), null);
+    finish(new Error('script error'), null);
   };
 
-  // iOS Safari 必要屬性
-  s.async      = true;
-  s.defer      = false;
-  s.crossOrigin = 'anonymous';
-  s.type       = 'text/javascript';
-  s.src = url + (url.indexOf('?')>=0?'&':'?') + 'callback='+name+'&_t='+Date.now();
-
-  // iOS Safari：document.body 可能還沒 ready，雙重保險
-  var target = document.body || document.head || document.documentElement;
-  target.appendChild(s);
+  // 用 body 插入，iOS Safari 相容性比 head 好
+  s.src = url + (url.includes('?')?'&':'?') + 'callback='+name+'&_t='+Date.now();
+  (document.body || document.head).appendChild(s);
 }
 
-/* ── Pull：JSONP 主路 + fetch 備援（iOS Safari 雙軌） ── */
+/* ── Pull (Google Sheets → UI)，含重試機制 ── */
 function pull(retryCount){
   if(!GAS_URL.startsWith('https://script.google.com')){ useDemo(); return; }
-  var retry = retryCount || 0;
+  const retry = retryCount || 0;
 
-  // iOS Safari 偵測
-  var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
-              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-  // iOS 優先嘗試 fetch（避免 Safari JSONP 靜默失敗）
-  if(isIOS && retry === 0 && typeof fetch !== 'undefined'){
-    fetchFallback(function(ok){
-      if(!ok) jsonpPull(retry);  // fetch 也失敗才改用 JSONP
-    });
-    return;
-  }
-
-  jsonpPull(retry);
-}
-
-/* ── fetch 備援（iOS Safari 主要路徑） ── */
-function fetchFallback(done){
-  var controller = null;
-  var timer      = null;
-
-  try{
-    // AbortController 支援度：iOS 11.3+
-    if(typeof AbortController !== 'undefined'){
-      controller = new AbortController();
-      timer = setTimeout(function(){ controller.abort(); }, 20000);
-    }
-
-    fetch(GAS_URL + '?action=list&_t=' + Date.now(), {
-      method : 'GET',
-      mode   : 'cors',
-      cache  : 'no-store',
-      signal : controller ? controller.signal : undefined
-    })
-    .then(function(r){
-      if(timer) clearTimeout(timer);
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.json();
-    })
-    .then(function(res){
-      var rows = res && Array.isArray(res.data) ? res.data : [];
-      var norm = rows.map(normalizeRow).filter(Boolean);
-      S._loaded = true;
-      if(norm.length){
-        merge(norm);
-        syncComments(norm);
-        lsSet(LS_POSTS, S.posts);
-        lsSet(LS_COMMENTS, S.comments);
-        renderAll();
-        done(true);
-      } else {
-        done(false);
-      }
-    })
-    .catch(function(err){
-      if(timer) clearTimeout(timer);
-      console.warn('[fetch] 失敗，改用 JSONP:', err.message);
-      done(false);
-    });
-
-  } catch(e){
-    console.warn('[fetch] 不支援，改用 JSONP:', e.message);
-    done(false);
-  }
-}
-
-/* ── JSONP pull 核心 ── */
-function jsonpPull(retry){
   jsonp(GAS_URL+'?action=list', function(err, res){
     if(err){
-      console.warn('[jsonp] 第'+(retry+1)+'次失敗:', err.message);
-      if(retry < 3){
-        setTimeout(function(){ jsonpPull(retry+1); }, (retry+1)*4000);
+      console.warn('[pull] 第'+(retry+1)+'次失敗:', err.message);
+      if(retry < 2){
+        // 手機網路不穩：最多重試 2 次，間隔遞增
+        setTimeout(function(){ pull(retry+1); }, (retry+1)*3000);
       } else {
-        S._loaded = true;
-        renderAll();
-        toast('網路連線不穩，請稍後重新整理頁面');
+        if(!S.posts.length) useDemo();
+        toast('網路連線不穩，顯示本機暫存資料');
       }
       return;
     }
-    var rows = res && Array.isArray(res.data) ? res.data : [];
-    var norm = rows.map(normalizeRow).filter(Boolean);
-    S._loaded = true;
+    const rows = res&&Array.isArray(res.data)?res.data:[];
+    const norm = rows.map(normalizeRow).filter(Boolean);
     if(norm.length){
       merge(norm);
-      syncComments(norm);
+      // 同步伺服器留言到本機
+      norm.forEach(function(p){
+        if(p.comments&&p.comments.length){
+          const local = S.comments[p.id]||[];
+          // 以伺服器為主，補上本機新增但尚未同步的留言
+          const svCmts = p.comments.map(function(t){ return {text:t,createdAt:0}; });
+          const localOnly = local.filter(function(lc){
+            return !p.comments.includes(lc.text);
+          });
+          S.comments[p.id] = svCmts.concat(localOnly);
+        }
+      });
       lsSet(LS_POSTS, S.posts);
       lsSet(LS_COMMENTS, S.comments);
       renderAll();
-    } else {
-      renderAll();
+    } else if(!S.posts.length){
+      useDemo();
     }
-  }, 20000);
+  }, 15000); // 手機給 15 秒
 }
 
-/* ── 留言同步（抽出共用） ── */
-function syncComments(norm){
-  norm.forEach(function(p){
-    if(p.comments && p.comments.length){
-      var local = S.comments[p.id] || [];
-      var svCmts = p.comments.map(function(t){ return {text:t, createdAt:0}; });
-      var localOnly = local.filter(function(lc){
-        return p.comments.indexOf(lc.text) === -1;
-      });
-      S.comments[p.id] = svCmts.concat(localOnly);
-    }
-  });
-}
-
-/* ── Push (UI → Google Sheets)，含靜默重試，手機寫入不顯示失敗 ── */
-var _pushQueue = [];      // 待重試的寫入佇列
-var _pushBusy  = false;   // 是否正在嘗試寫入
-
+/* ── Push (UI → Google Sheets) ── */
 function push(payload, ok, fail){
   if(!GAS_URL.startsWith('https://script.google.com')){ ok&&ok(); return; }
-  _pushQueue.push({payload:payload, ok:ok, fail:fail, tries:0});
-  flushQueue();
-}
-
-function flushQueue(){
-  if(_pushBusy || _pushQueue.length===0) return;
-  _pushBusy = true;
-  var item = _pushQueue[0];
-  item.tries++;
-
-  var qs = Object.keys(item.payload).map(function(k){
-    return encodeURIComponent(k)+'='+encodeURIComponent(item.payload[k]);
+  const qs = Object.keys(payload).map(function(k){
+    return encodeURIComponent(k)+'='+encodeURIComponent(payload[k]);
   }).join('&');
-
-  // 手機版給更充裕的 30 秒，GAS 冷啟動加寫入約需 10～25 秒
-  jsonp(GAS_URL+'?'+qs, function(err, res){
-    _pushBusy = false;
-
-    var failed = err || (res && res.success === false);
-
-    if(!failed){
-      // 成功：移出佇列，執行 ok callback，繼續下一筆
-      _pushQueue.shift();
-      item.ok && item.ok(res);
-      setTimeout(flushQueue, 500);
-
-    } else if(item.tries < 3){
-      // 失敗但還有重試次數：等待後重試，不顯示錯誤
-      console.warn('[push] 第'+item.tries+'次失敗，準備重試', err&&err.message);
-      setTimeout(flushQueue, item.tries * 4000);   // 4s、8s 遞增間隔
-
-    } else {
-      // 三次都失敗：移出佇列，執行 fail callback（此時才告知使用者）
-      _pushQueue.shift();
-      item.fail && item.fail();
-      setTimeout(flushQueue, 500);
-    }
-  }, 30000);
+  jsonp(GAS_URL+'?'+qs, function(err,res){
+    if(err||(res&&res.success===false)) fail&&fail();
+    else ok&&ok(res);
+  }, 20000); // 寫入給較長的 20 秒
 }
 
-/* ── Demo data：已移除，改為等待 Google Sheets 資料 ── */
+/* ── Demo data ── */
 function useDemo(){
-  // 清除本機暫存，確保不顯示舊資料
-  S.posts = [];
-  lsSet(LS_POSTS, []);
+  if(S.posts.length) return;
+  const now=Date.now();
+  S.posts=[
+    {id:uid(),heroName:'ArthurWang',dept:'User Operation (OPS)',
+     story:'昨天需求很急、資料又很亂時，他主動把資訊重新整理，還幫忙釐清優先順序，讓整件事可以在下班前順利收尾。',
+     createdAt:now-2*3600000,likes:18},
+    {id:uid(),heroName:'CindyLin',dept:'Design (設計)',
+     story:'協助我把混亂的視覺稿整理得非常清楚，還主動提供備用方案，讓發佈時間縮短了整整兩天。',
+     createdAt:now-10*3600000,likes:7},
+    {id:uid(),heroName:'BrianChen',dept:'Product (PM)',
+     story:'在最關鍵的時間點提出了一個讓大家都服氣的解法，把原本卡住兩週的需求討論直接收尾。',
+     createdAt:now-22*3600000,likes:12},
+  ];
+  lsSet(LS_POSTS,S.posts);
   renderAll();
 }
 
@@ -846,13 +739,12 @@ function onSubmit(e){
   renderAll();
   closeMod();
   D.form.reset();
-  // 先給使用者確認感，不急著說「正在同步」
-  toast('感謝已送出 ✅');
+  toast('感謝已送出，正在同步至試算表…');
 
   push(
-    {action:'create', heroName:name, dept, story},
-    function(){ pull(); },          // 成功後靜默拉取最新資料，不打擾使用者
-    function(){ toast('網路不穩，感謝已暫存，稍後自動重試'); }
+    {action:'create',heroName:name,dept,story},
+    ()=>{ toast('感謝已成功寫入 Google 試算表 ✅'); pull(); },
+    ()=>  toast('已先顯示在畫面，試算表寫入失敗')
   );
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -960,10 +852,7 @@ function renderLeaders(){
 
 function renderWall(posts){
   if(!posts.length){
-    const isLoading = !S._loaded;
-    D.wall.innerHTML = isLoading
-      ? '<div class="empty">⏳ 正在從 Google Sheets 載入資料…</div>'
-      : '<div class="empty">目前沒有符合條件的感謝，試試切換部門或搜尋其他關鍵字。</div>';
+    D.wall.innerHTML='<div class="empty">目前沒有符合條件的感謝，試試切換部門或搜尋其他關鍵字。</div>';
     return;
   }
   D.wall.innerHTML=posts.map((p,i)=>{
