@@ -389,7 +389,7 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
   .leader-row .add-leader-card{grid-column:auto;}
   .form-2col{grid-template-columns:1fr;}
   .post-name-row{flex-direction:column;align-items:flex-start;}
-  .marquee-track{animation-duration:20s;}
+  .marquee-track{animation-duration:90s;}
 }
 @media(max-width:540px){
   .page{padding:16px 0 32px;}
@@ -583,9 +583,13 @@ function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){}
 
 /* ── Init ── */
 function init(){
-  S.posts    = lsGet(LS_POSTS,[]).filter(validPost);
-  S.likesMap = lsGet(LS_LIKES,{});
-  S.comments = lsGet(LS_COMMENTS,{});
+  // 清除本機暫存，統一以 Google Sheets 為唯一資料來源
+  lsSet(LS_POSTS, []);
+  lsSet(LS_LIKES, {});
+  lsSet(LS_COMMENTS, {});
+  S.posts    = [];
+  S.likesMap = {};
+  S.comments = {};
   makeRain();
   bind();
   renderAll();
@@ -660,16 +664,17 @@ function pull(retryCount){
     if(err){
       console.warn('[pull] 第'+(retry+1)+'次失敗:', err.message);
       if(retry < 2){
-        // 手機網路不穩：最多重試 2 次，間隔遞增
         setTimeout(function(){ pull(retry+1); }, (retry+1)*3000);
       } else {
-        if(!S.posts.length) useDemo();
-        toast('網路連線不穩，顯示本機暫存資料');
+        S._loaded = true;
+        useDemo();
+        toast('網路連線不穩，無法載入資料');
       }
       return;
     }
     const rows = res&&Array.isArray(res.data)?res.data:[];
     const norm = rows.map(normalizeRow).filter(Boolean);
+    S._loaded = true;  // 標記已從伺服器取得回應
     if(norm.length){
       merge(norm);
       // 同步伺服器留言到本機
@@ -739,22 +744,11 @@ function flushQueue(){
   }, 30000);
 }
 
-/* ── Demo data ── */
+/* ── Demo data：已移除，改為等待 Google Sheets 資料 ── */
 function useDemo(){
-  if(S.posts.length) return;
-  const now=Date.now();
-  S.posts=[
-    {id:uid(),heroName:'ArthurWang',dept:'User Operation (OPS)',
-     story:'昨天需求很急、資料又很亂時，他主動把資訊重新整理，還幫忙釐清優先順序，讓整件事可以在下班前順利收尾。',
-     createdAt:now-2*3600000,likes:18},
-    {id:uid(),heroName:'CindyLin',dept:'Design (設計)',
-     story:'協助我把混亂的視覺稿整理得非常清楚，還主動提供備用方案，讓發佈時間縮短了整整兩天。',
-     createdAt:now-10*3600000,likes:7},
-    {id:uid(),heroName:'BrianChen',dept:'Product (PM)',
-     story:'在最關鍵的時間點提出了一個讓大家都服氣的解法，把原本卡住兩週的需求討論直接收尾。',
-     createdAt:now-22*3600000,likes:12},
-  ];
-  lsSet(LS_POSTS,S.posts);
+  // 清除本機暫存，確保不顯示舊資料
+  S.posts = [];
+  lsSet(LS_POSTS, []);
   renderAll();
 }
 
@@ -890,7 +884,10 @@ function renderLeaders(){
 
 function renderWall(posts){
   if(!posts.length){
-    D.wall.innerHTML='<div class="empty">目前沒有符合條件的感謝，試試切換部門或搜尋其他關鍵字。</div>';
+    const isLoading = !S._loaded;
+    D.wall.innerHTML = isLoading
+      ? '<div class="empty">⏳ 正在從 Google Sheets 載入資料…</div>'
+      : '<div class="empty">目前沒有符合條件的感謝，試試切換部門或搜尋其他關鍵字。</div>';
     return;
   }
   D.wall.innerHTML=posts.map((p,i)=>{
