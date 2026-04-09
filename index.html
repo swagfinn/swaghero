@@ -868,7 +868,7 @@ function renderMarquee(){
   }];
 
   const html = list.map(p=>{
-    const prev = p.story.length>32 ? p.story.slice(0,32)+'…' : p.story;
+    const prev = p.story.length>64 ? p.story.slice(0,64)+'…' : p.story;
     return `<span class="mq-item"><span class="mq-heart" aria-hidden="true">❤</span>感謝 <strong>${esc(p.heroName)}</strong>：${esc(prev)}<span class="mq-sep">·</span></span>`;
   }).join('');
 
