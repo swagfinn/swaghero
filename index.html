@@ -212,7 +212,8 @@ body{
 .search-box select option{background:#0b1630;color:var(--text);}
 
 /* ─── Leaderboard ─── */
-.leader-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:20px;}
+.leader-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;}
+.add-leader-card{grid-column:1/-1;}
 .leader-card{
   padding:20px;display:flex;flex-direction:column;gap:10px;
   cursor:pointer;transition:border-color .2s ease,background .2s ease;
@@ -252,24 +253,34 @@ body{
   min-width:44px;text-align:center;white-space:nowrap;
 }
 .add-card{
-  padding:20px;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:12px;text-align:center;min-height:110px;
-  border:1px dashed rgba(23,214,205,.28);background:rgba(23,214,205,.04);
-  transition:.25s ease;
+  padding:18px 24px;cursor:pointer;
+  display:flex;flex-direction:row;align-items:center;
+  gap:18px;text-align:left;
+  border:1px solid rgba(255,191,63,.35);
+  background:linear-gradient(135deg,rgba(255,191,63,.08),rgba(255,140,0,.05));
+  transition:.25s ease;position:relative;overflow:hidden;
+}
+.add-card::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(135deg,rgba(255,255,255,.05) 0%,transparent 50%);
 }
 .add-card:hover{
-  border-color:rgba(23,214,205,.55);background:rgba(23,214,205,.09);
-  transform:translateY(-2px);box-shadow:0 12px 28px rgba(23,214,205,.14);
+  border-color:rgba(255,191,63,.65);
+  background:linear-gradient(135deg,rgba(255,191,63,.15),rgba(255,140,0,.10));
+  transform:translateY(-2px);
+  box-shadow:0 8px 28px rgba(255,191,63,.2);
 }
+.add-card:active{transform:translateY(0);}
 .add-icon{
-  width:48px;height:48px;border-radius:14px;font-size:22px;
-  background:linear-gradient(135deg,rgba(23,214,205,.2),rgba(35,242,177,.14));
-  border:1px solid rgba(23,214,205,.22);
+  width:52px;height:52px;border-radius:14px;font-size:24px;flex-shrink:0;
+  background:linear-gradient(135deg,#ffbf3f,#ff9500);
+  box-shadow:0 6px 18px rgba(255,191,63,.4);
   display:flex;align-items:center;justify-content:center;
+  color:#07111f;
 }
-.add-card p{color:var(--gold);font-weight:700;font-size:15px;}
-.add-card span{color:var(--muted);font-size:12px;}
+.add-card-text{display:flex;flex-direction:column;gap:3px;}
+.add-card p{color:#ffe08a;font-weight:800;font-size:16px;letter-spacing:.01em;}
+.add-card span{color:#c8a84b;font-size:12px;}
 
 /* ─── Wall ─── */
 .wall{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:20px;}
@@ -473,7 +484,6 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
 @media(max-width:1100px){
   .wall{grid-template-columns:repeat(2,1fr);}
   .leader-row{grid-template-columns:1fr 1fr;gap:12px;}
-  .leader-row .add-leader-card{grid-column:1/-1;}
 }
 @media(max-width:760px){
   .stats-row{grid-template-columns:1fr;gap:12px;padding:16px;}
@@ -481,7 +491,6 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
   .search-box{width:100%;}
   .wall{grid-template-columns:1fr;}
   .leader-row{grid-template-columns:1fr;}
-  .leader-row .add-leader-card{grid-column:auto;}
   .form-2col{grid-template-columns:1fr;}
   .post-name-row{flex-direction:column;align-items:flex-start;}
   .marquee-track{animation-duration:69s;}
@@ -943,8 +952,11 @@ function renderLeaders(){
     mkCard(topC,'最佳互動王','lbl-pink','💬','leaderCommenter')+
     mkCard(topT,'人氣感謝王','lbl-teal','✨','leaderThanks')+
     `<div class="panel add-card add-leader-card" id="addBtn" role="button" tabindex="0" aria-label="點擊送出感謝">
-      <div class="add-icon" aria-hidden="true">✨</div>
-      <p>送出一則感謝</p><span>點擊填寫表單</span>
+      <div class="add-icon" aria-hidden="true">➕</div>
+      <div class="add-card-text">
+        <p>送出一則感謝</p>
+        <span>點擊填寫表單，讓感謝被看見</span>
+      </div>
     </div>`;
 
   // 送出按鈕
