@@ -112,7 +112,7 @@ body{
 }
 
 /* ─── Stats ─── */
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px;}
+.stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:20px;}
 .stat-card{
   padding:18px 18px 22px;border-radius:var(--r-lg);
   border:1px solid var(--line);background:rgba(255,255,255,.025);
@@ -539,15 +539,6 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
         <div class="stat-lbl">本週新增感謝</div>
         <span class="stat-hint">點擊查看 ›</span>
       </div>
-      <!-- 3. 本週新增留言 -->
-      <div class="stat-card" id="statCardComments" role="button" tabindex="0" aria-label="查看本週新增留言">
-        <div class="stat-icon-row">
-          <div class="sicon gold" aria-hidden="true">💬</div>
-          <div class="stat-val" id="statWeekComments">—</div>
-        </div>
-        <div class="stat-lbl">本週新增留言</div>
-        <span class="stat-hint">點擊查看 ›</span>
-      </div>
     </div>
 
     <div class="marquee-wrap">
@@ -679,14 +670,14 @@ const S = {
 const $ = id => document.getElementById(id);
 const D = {
   wall:$('wall'),mq:$('marqueeTrack'),chips:$('deptChips'),sort:$('sortSelect'),
-  statL:$('statLikes'),statW:$('statWeekNew'),statC:$('statWeekComments'),
+  statL:$('statLikes'),statW:$('statWeekNew'),
   leaders:$('leaderRow'),
   backdrop:$('modalBackdrop'),closeBtn:$('modalClose'),
   form:$('thanksForm'),heroName:$('heroName'),dept:$('dept'),story:$('story'),
   toast:$('toast'),rain:$('logoRain'),
   drawerBackdrop:$('drawerBackdrop'),drawerClose:$('drawerClose'),
   drawerTitle:$('drawerTitle'),drawerSubtitle:$('drawerSubtitle'),drawerBody:$('drawerBody'),
-  statCardLikes:$('statCardLikes'),statCardWeekNew:$('statCardWeekNew'),statCardComments:$('statCardComments')
+  statCardLikes:$('statCardLikes'),statCardWeekNew:$('statCardWeekNew')
 };
 
 /* ── Storage ── */
@@ -726,7 +717,6 @@ function bind(){
   }
   statClick(D.statCardLikes,   ()=>drawerWeekLikes());
   statClick(D.statCardWeekNew, ()=>scrollToWeekNew());
-  statClick(D.statCardComments,()=>drawerWeekComments());
 }
 
 function openMod(){ D.backdrop.classList.add('open'); setTimeout(()=>D.heroName.focus(),120); }
@@ -890,41 +880,6 @@ function scrollToWeekNew(){
   toast('已顯示本週新增感謝');
 }
 
-/* 3. 本週新增留言 → 本週有留言的小卡 Drawer（徽章點擊捲動至對應小卡） */
-function drawerWeekComments(){
-  const ws=Date.now()-WEEK;
-  const posts=S.posts.filter(p=>{
-    const cmts=S.comments[p.id]||[];
-    return cmts.some(c=>(c.createdAt||0)>=ws);
-  }).sort((a,b)=>{
-    const ac=(S.comments[a.id]||[]).filter(c=>(c.createdAt||0)>=ws).length;
-    const bc=(S.comments[b.id]||[]).filter(c=>(c.createdAt||0)>=ws).length;
-    return bc-ac;
-  });
-  const html=posts.length?posts.map(p=>{
-    const cmts=(S.comments[p.id]||[]).filter(c=>(c.createdAt||0)>=ws);
-    const cmtHtml=cmts.slice(-3).map(c=>`<div class="mini-cmt-item">${esc(c.text)}</div>`).join('');
-    return `<div class="mini-card">
-      <div class="mini-card-top">
-        <div><div class="mini-card-name">${esc(p.heroName)}</div><div class="mini-card-dept">${esc(p.dept)}</div></div>
-        <button class="mini-card-badge badge-gold dgoto-btn" data-id="${esc(p.id)}"
-          style="cursor:pointer;border:none;transition:.15s ease;" title="捲動至感謝小卡">
-          💬 ${cmts.length} 則
-        </button>
-      </div>
-      <div class="mini-card-body">${esc(p.story.length>60?p.story.slice(0,60)+'…':p.story)}</div>
-      ${cmtHtml}
-      <div class="mini-card-foot">${relTime(p.createdAt)}</div>
-    </div>`;
-  }).join('')
-  :'<div class="drawer-empty">本週還沒有新留言 💭</div>';
-  openDrawer('本週新增留言','近 7 天 · 依留言數排序',html);
-  // 綁定跳轉按鈕
-  D.drawerBody.querySelectorAll('.dgoto-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{ scrollToPost(btn.dataset.id); });
-  });
-}
-
 /* ════ RENDER ════ */
 function renderAll(){
   renderStats(); renderMarquee(); renderChips(); renderLeaders(); renderWall(getFiltered());
@@ -934,7 +889,6 @@ function renderStats(){
   const now=Date.now(), ws=now-WEEK;
   D.statL.textContent = fmt(S.posts.reduce((s,p)=>s+(p.likes||0),0));
   D.statW.textContent = '+'+fmt(S.posts.filter(p=>p.createdAt>=ws).length);
-  D.statC.textContent = fmt(S.posts.reduce((s,p)=>s+(S.comments[p.id]||[]).filter(c=>c.createdAt>=ws).length,0));
 }
 
 /* 1. 跑馬燈顯示當月感謝 */
