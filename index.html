@@ -690,6 +690,8 @@ function init(){
   S.likesMap = lsGet(LS_LIKES,{});
   S.comments = lsGet(LS_COMMENTS,{});
   makeRain(); bind(); renderAll(); pull();
+  // 每 60 秒自動與 Google Sheets 同步一次
+  setInterval(pull, 60000);
 }
 
 /* ── Events ── */
@@ -1093,9 +1095,11 @@ function getLatestActivity(post){
   return Math.max(Number(post.createdAt)||0,lc);
 }
 function merge(inc){
-  const lk={};
-  S.posts.forEach(p=>{ lk[sig(p)]=p.likes||0; });
-  S.posts=inc.map(p=>({...p,likes:Number(p.likes||lk[sig(p)]||0)})).sort((a,b)=>b.createdAt-a.createdAt);
+  // GAS 為唯一真相來源：直接使用 Sheets 的 likes，不用本地值覆蓋
+  S.posts=inc.map(p=>({...p,likes:Number(p.likes)||0})).sort((a,b)=>b.createdAt-a.createdAt);
+  // likesMap 重置：依 Sheets 實際讚數重建（無法知道「是誰」按的，故清空讓使用者重新按）
+  S.likesMap={};
+  lsSet(LS_LIKES,S.likesMap);
 }
 function normalizeRow(row,i){
   if(!row) return null;
