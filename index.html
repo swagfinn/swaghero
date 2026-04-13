@@ -765,13 +765,11 @@ function pull(retry){
     const norm = rows.map(normalizeRow).filter(Boolean);
     if(norm.length){
       merge(norm);
+      // GAS 為唯一真相來源：直接以 Sheets 的留言覆蓋 localStorage
+      // 本地新增但尚未同步的留言（push 中）會在下一次 pull 時自然出現在 Sheets
       norm.forEach(p=>{
-        if(p.comments&&p.comments.length){
-          const local = S.comments[p.id]||[];
-          const svCmts = p.comments.map(t=>({text:t,createdAt:0}));
-          const localOnly = local.filter(lc=>!p.comments.includes(lc.text));
-          S.comments[p.id] = svCmts.concat(localOnly);
-        }
+        const svCmts = (p.comments||[]).map(t=>({text:t, createdAt:0}));
+        S.comments[p.id] = svCmts;
       });
       lsSet(LS_POSTS,S.posts); lsSet(LS_COMMENTS,S.comments);
       renderAll();
