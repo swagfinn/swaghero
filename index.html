@@ -710,8 +710,10 @@ function bind(){
   D.backdrop.addEventListener('click', e=>{ if(e.target===D.backdrop) closeMod(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeMod(); closeDrawer(); } });
   D.sort.addEventListener('change', e=>{
-    S.sort=e.target.value||'latest';
+    S.sort = e.target.value || 'latest';
     clearFilters();
+    // 選「最新留言」時額外重設部門為「全部」，確保顯示完整結果
+    if(S.sort === 'latest') S.dept = '全部';
     renderAll();
   });
   window.addEventListener('resize', debounce(makeRain,220));
@@ -1103,8 +1105,13 @@ function getFiltered(){
 }
 function getLatestActivity(post){
   const cmts=S.comments[post.id]||[];
-  const lc=cmts.reduce((m,c)=>Math.max(m,Number(c.createdAt)||0),0);
-  return Math.max(Number(post.createdAt)||0,lc);
+  // GAS 拉回的留言 createdAt 為 0，改用 post.createdAt 作為代替（確保有留言的卡片排前面）
+  const postTs=Number(post.createdAt)||0;
+  const lc=cmts.reduce((m,c)=>{
+    const t=Number(c.createdAt)||0;
+    return Math.max(m, t>0 ? t : postTs);
+  },0);
+  return Math.max(postTs,lc);
 }
 function merge(inc){
   // GAS 為唯一真相來源：直接使用 Sheets 的 likes，不用本地值覆蓋
