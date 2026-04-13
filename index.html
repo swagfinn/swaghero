@@ -709,12 +709,24 @@ function bind(){
   D.closeBtn.addEventListener('click', closeMod);
   D.backdrop.addEventListener('click', e=>{ if(e.target===D.backdrop) closeMod(); });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeMod(); closeDrawer(); } });
+  // 記錄點擊前的值，用於判斷使用者是否重選了同一個選項
+  let _prevSort = D.sort.value || 'latest';
+  D.sort.addEventListener('mousedown', ()=>{ _prevSort = D.sort.value; });
   D.sort.addEventListener('change', e=>{
     S.sort = e.target.value || 'latest';
     clearFilters();
-    // 選「最新留言」時額外重設部門為「全部」，確保顯示完整結果
     if(S.sort === 'latest') S.dept = '全部';
     renderAll();
+    _prevSort = S.sort;
+  });
+  // 補捉「已選最新留言、再次選最新留言」：值沒變 change 不觸發，用 blur 補強
+  D.sort.addEventListener('blur', ()=>{
+    if(_prevSort === 'latest' && (D.sort.value||'latest') === 'latest'){
+      S.sort = 'latest';
+      clearFilters();
+      S.dept = '全部';
+      renderAll();
+    }
   });
   window.addEventListener('resize', debounce(makeRain,220));
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') pull(); });
