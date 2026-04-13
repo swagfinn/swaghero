@@ -384,6 +384,9 @@ body{
 .mini-card-name{font-size:15px;font-weight:800;color:var(--text);line-height:1.4;}
 .mini-card-dept{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5;}
 .mini-card-badge{padding:4px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.mini-card-badge.clickable{cursor:pointer;transition:opacity .15s ease,transform .15s ease;}
+.mini-card-badge.clickable:hover{opacity:.8;transform:scale(1.05);}
+.mini-card-badge.clickable:active{transform:scale(.95);}
 .badge-pink{background:rgba(255,77,141,.15);color:#ffa8c8;border:1px solid rgba(255,77,141,.22);}
 .badge-teal{background:rgba(23,214,205,.15);color:#7efff7;border:1px solid rgba(23,214,205,.22);}
 .badge-gold{background:rgba(255,191,63,.15);color:var(--gold);border:1px solid rgba(255,191,63,.22);}
@@ -846,22 +849,35 @@ function sendCmt(id){
 
 /* ════ STAT CARD ACTIONS ════ */
 
-/* 1. 總感謝按讚數 → 近七日按讚 Drawer */
+/* 1. 總感謝按讚數 → 近七日按讚 Drawer（徽章可直接按讚 / 收回讚） */
 function drawerWeekLikes(){
   const ws=Date.now()-WEEK;
   const posts=S.posts.filter(p=>p.createdAt>=ws&&(p.likes||0)>0)
     .sort((a,b)=>(b.likes||0)-(a.likes||0));
-  const html=posts.length?posts.map(p=>`
-    <div class="mini-card">
+  const html=posts.length?posts.map(p=>{
+    const liked=!!S.likesMap[p.id];
+    return `<div class="mini-card">
       <div class="mini-card-top">
         <div><div class="mini-card-name">${esc(p.heroName)}</div><div class="mini-card-dept">${esc(p.dept)}</div></div>
-        <div class="mini-card-badge badge-pink">❤ ${fmt(p.likes||0)} 讚</div>
+        <button class="mini-card-badge badge-pink dlk-btn" data-id="${esc(p.id)}"
+          style="cursor:pointer;border:none;background:${liked?'rgba(255,77,141,.3)':'rgba(255,77,141,.15)'};transition:.15s ease;"
+          aria-label="${liked?'收回讚':'按讚'}">
+          ${liked?'❤':'♡'} ${fmt(p.likes||0)} 讚
+        </button>
       </div>
       <div class="mini-card-body">${esc(p.story.length>80?p.story.slice(0,80)+'…':p.story)}</div>
       <div class="mini-card-foot">${relTime(p.createdAt)}</div>
-    </div>`).join('')
-    :'<div class="drawer-empty">近七日內還沒有感謝收到按讚 💭</div>';
+    </div>`;
+  }).join('')
+  :'<div class="drawer-empty">近七日內還沒有感謝收到按讚 💭</div>';
   openDrawer('近七日按讚榜','近 7 天 · 依按讚數排序',html);
+  // 綁定按讚按鈕：點擊後 onLike 並重新渲染 Drawer
+  D.drawerBody.querySelectorAll('.dlk-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      onLike(btn.dataset.id);
+      drawerWeekLikes();   // 重新渲染 Drawer 反映最新狀態
+    });
+  });
 }
 
 /* 2. 本週新增感謝 → 捲動至 wall 篩選本週（不限時） */
@@ -874,7 +890,7 @@ function scrollToWeekNew(){
   toast('已顯示本週新增感謝');
 }
 
-/* 3. 本週新增留言 → 本週有留言的小卡 Drawer */
+/* 3. 本週新增留言 → 本週有留言的小卡 Drawer（徽章點擊捲動至對應小卡） */
 function drawerWeekComments(){
   const ws=Date.now()-WEEK;
   const posts=S.posts.filter(p=>{
@@ -891,7 +907,10 @@ function drawerWeekComments(){
     return `<div class="mini-card">
       <div class="mini-card-top">
         <div><div class="mini-card-name">${esc(p.heroName)}</div><div class="mini-card-dept">${esc(p.dept)}</div></div>
-        <div class="mini-card-badge badge-gold">💬 ${cmts.length} 則</div>
+        <button class="mini-card-badge badge-gold dgoto-btn" data-id="${esc(p.id)}"
+          style="cursor:pointer;border:none;transition:.15s ease;" title="捲動至感謝小卡">
+          💬 ${cmts.length} 則
+        </button>
       </div>
       <div class="mini-card-body">${esc(p.story.length>60?p.story.slice(0,60)+'…':p.story)}</div>
       ${cmtHtml}
@@ -900,6 +919,10 @@ function drawerWeekComments(){
   }).join('')
   :'<div class="drawer-empty">本週還沒有新留言 💭</div>';
   openDrawer('本週新增留言','近 7 天 · 依留言數排序',html);
+  // 綁定跳轉按鈕
+  D.drawerBody.querySelectorAll('.dgoto-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{ scrollToPost(btn.dataset.id); });
+  });
 }
 
 /* ════ RENDER ════ */
@@ -995,7 +1018,7 @@ function renderLeaders(){
   }
 }
 
-/* 最佳互動王：兩週內該人有留言的感謝卡 */
+/* 最佳互動王：兩週內該人有留言的感謝卡（徽章點擊捲動至對應小卡） */
 function drawerPersonComments(name){
   const tw=Date.now()-TWO_WEEK;
   const posts=S.posts.filter(p=>p.heroName===name&&p.createdAt>=tw&&(S.comments[p.id]||[]).length>0)
@@ -1006,7 +1029,10 @@ function drawerPersonComments(name){
     return `<div class="mini-card">
       <div class="mini-card-top">
         <div><div class="mini-card-name">${esc(p.heroName)}</div><div class="mini-card-dept">${esc(p.dept)}</div></div>
-        <div class="mini-card-badge badge-pink">💬 ${cmts.length} 則留言</div>
+        <button class="mini-card-badge badge-pink dgoto-btn" data-id="${esc(p.id)}"
+          style="cursor:pointer;border:none;transition:.15s ease;" title="捲動至感謝小卡">
+          💬 ${cmts.length} 則留言
+        </button>
       </div>
       <div class="mini-card-body">${esc(p.story.length>70?p.story.slice(0,70)+'…':p.story)}</div>
       ${cmtHtml}
@@ -1015,6 +1041,26 @@ function drawerPersonComments(name){
   }).join('')
   :`<div class="drawer-empty">${esc(name)} 在近兩週內還沒有收到留言 💭</div>`;
   openDrawer(name+' 的互動回顧','近 14 天 · 依留言數排序',html);
+  // 綁定跳轉按鈕
+  D.drawerBody.querySelectorAll('.dgoto-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{ scrollToPost(btn.dataset.id); });
+  });
+}
+
+/* 捲動至指定 post 並青綠高亮 2 秒 */
+function scrollToPost(postId){
+  clearFilters(); renderAll(); closeDrawer();
+  setTimeout(()=>{
+    const el=document.getElementById('cw_'+postId);
+    const card=el?el.closest('.post-card'):null;
+    if(!card){ toast('找不到該筆感謝'); return; }
+    const top=card.getBoundingClientRect().top+window.scrollY-24;
+    window.scrollTo({top,behavior:'smooth'});
+    card.style.transition='box-shadow .3s ease,border-color .3s ease';
+    card.style.boxShadow='0 0 0 2px rgba(23,214,205,.75)';
+    card.style.borderColor='rgba(23,214,205,.75)';
+    setTimeout(()=>{ card.style.boxShadow=''; card.style.borderColor=''; },2000);
+  },120);
 }
 
 /* 人氣感謝王：捲動至 wall 篩選兩週內該人 */
