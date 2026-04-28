@@ -211,7 +211,7 @@ body{
 .leader-card:active{transform:scale(.98);}
 .leader-lbl{
   display:inline-flex;align-items:center;gap:6px;
-  font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  font-size:27px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;
   color:var(--muted);margin-bottom:2px;
 }
 .leader-lbl .ldot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8;}
@@ -232,7 +232,7 @@ body{
 .av-purple{background:linear-gradient(135deg,#7a50ff,#b383ff);}
 .av-orange{background:linear-gradient(135deg,#ff8a00,#ffb347);}
 .av-gray  {background:linear-gradient(135deg,#334,#667);}
-.leader-info h3{font-size:26px;font-weight:800;line-height:1.2;}
+.leader-info h3{font-size:18px;font-weight:800;line-height:1.2;}
 .leader-info p{color:var(--muted);font-size:12.5px;margin-top:3px;}
 .leader-score{
   margin-left:auto;align-self:flex-start;
@@ -638,6 +638,7 @@ textarea{min-height:120px;resize:vertical;line-height:1.7;}
             <option>User Operation（OPS）</option>
             <option>Executive Office（行政單位,含HR）</option>
             <option>Finance（財務）</option>
+            <option>我的預算有限公司</option>
           </select>
         </div>
       </div>
@@ -674,7 +675,8 @@ const DEPTS = [
   'Executive Office（行政單位）','Creator（TM）',
   'Customer Service（VIP）','Product（PM）',
   'Design（設計）','User Operation（OPS）',
-  'Executive Office（行政單位,含HR）','Finance（財務）'
+  'Executive Office（行政單位,含HR）','Finance（財務）',
+  '我的預算有限公司'
 ];
 const AV = ['av-gold','av-teal','av-pink','av-green','av-purple','av-orange'];
 
@@ -1135,6 +1137,7 @@ function canonDept(v){
     'User Operation(OPS)':'User Operation（OPS）','User Operation（OPS）':'User Operation（OPS）',
     'Executive Office(行政單位,含HR)':'Executive Office（行政單位,含HR）','Executive Office（行政單位,含HR）':'Executive Office（行政單位,含HR）',
     'Finance(財務)':'Finance（財務）','Finance（財務）':'Finance（財務）',
+    '我的預算有限公司':'我的預算有限公司',
     '全部':'全部'
   };
   const compact=cleaned.replace(/\s+/g,'');
@@ -1177,4 +1180,3 @@ init();
 </script>
 </body>
 </html>
-
